@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Code Pad</title>
+    <style>
+        :root { --bg: #0d1117; --text: #c9d1d9; --accent: #58a6ff; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: monospace; height: 100vh; display: flex; flex-direction: column; }
+        #toolbar { padding: 10px; background: #161b22; display: flex; gap: 10px; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
+        textarea { flex-grow: 1; background: transparent; color: var(--text); border: none; padding: 20px; font-size: 14px; resize: none; outline: none; line-height: 1.5; }
+        input, select, button { background: #21262d; color: white; border: 1px solid #30363d; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div id="toolbar">
+    <input type="text" id="fileName" placeholder="filename" value="project_code">
+    <select id="extension">
+        <option value=".txt">.txt</option>
+        <option value=".py">.py</option>
+        <option value=".html">.html</option>
+        <option value=".js">.js</option>
+        <option value=".css">.css</option>
+        <option value=".run">.run</option>
+        <option value=".exe">.exe</option>
+        <option value=".pdf">.pdf (as text)</option>
+    </select>
+    <button onclick="saveFile()">Save to Device</button>
+</div>
+
+<textarea id="editor" placeholder="Paste your code here..."></textarea>
+
+<script>
+    function saveFile() {
+        const text = document.getElementById('editor').value;
+        const name = document.getElementById('fileName').value;
+        const ext = document.getElementById('extension').value;
+        const blob = new Blob([text], { type: "text/plain" });
+        const link = document.createElement("a");
+        
+        link.download = name + ext;
+        link.href = window.URL.createObjectURL(blob);
+        link.onclick = (e) => {
+            setTimeout(() => { window.URL.revokeObjectURL(link.href); }, 1500);
+        };
+        link.click();
+    }
+</script>
+
+</body>
+</html>
