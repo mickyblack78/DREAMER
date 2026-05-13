@@ -448,7 +448,15 @@ function setMode(mode) {
             mainData: main.toDataURL() 
         });
     }
-
+    function triggerSave() {
+    const link = document.createElement('a');
+    link.download = (appState.loadedName || 'studio_export') + '.png';
+    // Combine canvases if you want both layers saved
+    mctx.drawImage(temp, 0, 0, main.width/appState.dpr, main.height/appState.dpr);
+    link.href = main.toDataURL();
+    link.click();
+    }
+    
     function performUndo() {
         if (appState.undoStack.length <= 1) { setMode(null); return; }
         const prevState = appState.undoStack[appState.undoStack.length - 1];
