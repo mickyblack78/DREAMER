@@ -112,7 +112,6 @@
     <div class="btn" id="btn-color" onclick="handleDockTap('color')">COLOR</div>
     <div class="btn" id="btn-edit" onclick="handleDockTap('edit')">EDIT</div>
 </div>
-
 <!-- MENU OVERLAY -->
 <div class="overlay" id="overlay-menu">
     <div class="menu-list">
@@ -124,7 +123,7 @@
             <div class="menu-item" onclick="document.getElementById('load-file').click()">LOAD</div>
             <div class="menu-item" onclick="document.getElementById('import-file').click()">IMPORT</div>
         </div>
-        <div class="menu-item" style="background: var(--neon-blue); color: #000;" onclick="switchOverlay('menu', 'tools')">TOOLS</div>
+        <div class="menu-item" onclick="switchOverlay('menu', 'tools')">TOOLS</div>
         <div class="menu-item" onclick="switchOverlay('menu', 'vault')">VAULTS</div>
     </div>
 </div>
@@ -143,10 +142,10 @@
         <div class="grid-btn" onclick="applyTool('FILL')">FILL</div>
         <div class="grid-btn" onclick="applyTool('PICKER')">PICKER</div>
         <div class="grid-btn" onclick="applyTool('PH...AI')">PH...AI</div>
-        <div class="grid-btn">PH_12</div>
+        <div class="grid-btn" onclick="switchOverlay('tools', 'menu')">BACK</div>
     </div>
-    <div class="recent-colors"
-id="recent-colors-box"></div></div>
+    <div class="recent-colors" id="recent-colors-box"></div>
+</div>
 <!-- COLOR OVERLAY -->
 <div class="overlay" id="overlay-color" style="background: none; pointer-events: none;">
     <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 40px; pointer-events: auto;">
