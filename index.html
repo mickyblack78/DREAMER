@@ -312,11 +312,13 @@ function setMode(mode) {
     let lastX = 0, lastY = 0;
 
     function getCoords(e) {
+        const rect = temp.getBoundingClientRect(); // The built-in invisible dots!
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const x = (clientX - appState.panX) / appState.scale;
-        const y = (clientY - appState.panY) / appState.scale;
-        return { x, y };
+        return { 
+            x: (clientX - rect.left) / appState.scale, 
+            y: (clientY - rect.top) / appState.scale 
+        };
     }
 
     viewport.addEventListener('touchstart', (e) => {
@@ -525,8 +527,25 @@ function triggerQSave() {
         reader.onload = function(event) {
             const img = new Image();
             img.onload = () => {
+                // 1. Resize canvas perfectly to the picture
+                main.width = temp.width = img.width;
+                main.height = temp.height = img.height;
+                main.style.width = temp.style.width = img.width + 'px';
+                main.style.height = temp.style.height = img.height + 'px';
+                
+                // 2. Reset zoom to fit the phone screen
+                appState.scale = Math.min(window.innerWidth / img.width, window.innerHeight / img.height) * 0.9;
+                appState.panX = (window.innerWidth - (img.width * appState.scale)) / 2;
+                appState.panY = (window.innerHeight - (img.height * appState.scale)) / 2;
+                viewport.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.scale})`;
+
+                // 3. Draw image and kill old math
+                appState.dpr = 1; 
+                mctx.lineCap = tctx.lineCap = 'round';
+                mctx.lineJoin = tctx.lineJoin = 'round';
                 mctx.clearRect(0,0, main.width, main.height);
-                mctx.drawImage(img, 0,0, main.width/appState.dpr, main.height/appState.dpr);
+                mctx.drawImage(img, 0, 0);
+                
                 pushUndo('load');
                 setMode(null);
             };
@@ -543,21 +562,17 @@ function triggerQSave() {
         reader.onload = function(event) {
             const img = new Image();
             img.onload = () => {
-                const viewW = window.innerWidth / appState.scale;
-                const viewH = window.innerHeight / appState.scale;
-                const ratio = Math.min(viewW / img.width, viewH / img.height) * 0.8; 
-                const drawW = img.width * ratio;
-                const drawH = img.height * ratio;
-                const drawX = (-appState.panX / appState.scale) + (viewW/2 - drawW/2);
-                const drawY = (-appState.panY / appState.scale) + (viewH/2 - drawH/2);
-                tctx.drawImage(img, drawX, drawY, drawW, drawH);
+                const rect = temp.getBoundingClientRect();
+                const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
+                const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
+                const drawW = img.width * 0.5; const drawH = img.height * 0.5;
+                tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
                 pushUndo('import');
                 setMode(null);
             };
             img.src = event.target.result;
         };
-        reader.readAsDataURL(file);
-        e.target.value = '';
+        reader.readAsDataURL(file); e.target.value = '';
     });
 
     document.getElementById('sticker-file').addEventListener('change', function(e) {
@@ -567,20 +582,16 @@ function triggerQSave() {
         reader.onload = function(event) {
             const img = new Image();
             img.onload = () => {
-                const viewW = window.innerWidth / appState.scale;
-                const viewH = window.innerHeight / appState.scale;
-                const ratio = Math.min(viewW / img.width, viewH / img.height); 
-                const drawW = img.width * ratio;
-                const drawH = img.height * ratio;
-                const drawX = (-appState.panX / appState.scale) + (viewW/2 - drawW/2);
-                const drawY = (-appState.panY / appState.scale) + (viewH/2 - drawH/2);
-                tctx.drawImage(img, drawX, drawY, drawW, drawH);
+                const rect = temp.getBoundingClientRect();
+                const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
+                const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
+                const drawW = img.width * 0.5; const drawH = img.height * 0.5;
+                tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
                 pushUndo('sticker');
             };
             img.src = event.target.result;
         };
-        reader.readAsDataURL(file);
-        e.target.value = '';
+        reader.readAsDataURL(file); e.target.value = '';
     });
         function hslToRgb(h, s, l) {
         h /= 360; s /= 100; l /= 100;
