@@ -565,7 +565,14 @@ function triggerQSave() {
                 const rect = temp.getBoundingClientRect();
                 const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
                 const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
-                const drawW = img.width * 0.5; const drawH = img.height * 0.5;
+                
+                // Restored screen-measuring math
+                const viewW = window.innerWidth / appState.scale;
+                const viewH = window.innerHeight / appState.scale;
+                const ratio = Math.min(viewW / img.width, viewH / img.height) * 0.8;
+                const drawW = img.width * ratio; 
+                const drawH = img.height * ratio;
+
                 tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
                 pushUndo('import');
                 setMode(null);
@@ -585,7 +592,14 @@ function triggerQSave() {
                 const rect = temp.getBoundingClientRect();
                 const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
                 const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
-                const drawW = img.width * 0.5; const drawH = img.height * 0.5;
+                
+                // Restored screen-measuring math
+                const viewW = window.innerWidth / appState.scale;
+                const viewH = window.innerHeight / appState.scale;
+                const ratio = Math.min(viewW / img.width, viewH / img.height);
+                const drawW = img.width * ratio; 
+                const drawH = img.height * ratio;
+
                 tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
                 pushUndo('sticker');
             };
