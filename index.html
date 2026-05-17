@@ -234,22 +234,20 @@ const mctx = main.getContext('2d');
 const tctx = temp.getContext('2d');
 
 function init() {
-    main. width= temp.width = window.innerWidth * appState.dpr;
+    main.width = temp.width = window.innerWidth * appState.dpr;
     main.height = temp.height = window.innerHeight * appState.dpr;
     main.style.width = temp.style.width = window.innerWidth + 'px';
     main.style.height = temp.style.height = window.innerHeight + 'px';
-    
     mctx.scale(appState.dpr, appState.dpr);
     tctx.scale(appState.dpr, appState.dpr);
     mctx.lineCap = tctx.lineCap = 'round';
     mctx.lineJoin = tctx.lineJoin = 'round';
-    
-    document.getElementById('loupe1').style.left = '50%';
-    document.getElementById('loupe2').style.left = '50%';
-    document.getElementById('loupe3').style.left = '20%';
-    updateMasterColor();
-
-    for(let i=0;i<2;i++){ appState.vaults[i] = localStorage.getItem('vault'+i); if(appState.vaults[i]) document.getElementById('img-vault-'+i).src = appState.vaults[i]; } pushUndo('init');
+    setTimeout(updateColor, 100);
+    for(let i=0;i<2;i++){ 
+        appState.vaults[i] = localStorage.getItem('vault'+i); 
+        if(appState.vaults[i]) document.getElementById('img-vault-'+i).src = appState.vaults[i]; 
+    } 
+    pushUndo('init');
 }
 function setMode(mode) {
         document.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
