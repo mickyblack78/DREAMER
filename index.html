@@ -257,9 +257,9 @@ function setMode(mode) {
         if (mode === 'menu') {
             document.getElementById('btn-menu').classList.add('active');
             document.getElementById('overlay-menu').style.display = 'flex';
-        } else if (mode === 'color') {
-            document.getElementById('btn-color').classList.add('active');
-            document.getElementById('overlay-color').style.display = 'flex';
+        } else if (mode === 'custom') {
+            document.getElementById('btn-custom').classList.add('active');
+            document.getElementById('overlay-custom').style.display = 'flex';
         } else if (mode === 'edit') {
             document.getElementById('btn-edit').classList.add('active');
             appState.activeTool = 'PAINTBRUSH'; // Edit always equips paintbrush
@@ -284,12 +284,12 @@ function setMode(mode) {
             setMode(null); // Tap active to close it
             if (mode === 'menu') menuBtn.innerText = 'MENU';
         } else {
-            // STRICT EXCLUSIVE CHECK: You must close the open panel before opening another
-            if (appState.activeMode !== null) return;
+            // STRICT EXCLUSIVE CHECK
+            // Exception added: 'edit' mode has no panel, so we allow tapping MENU to escape it!
+            if (appState.activeMode !== null && appState.activeMode !== 'edit') return;
             setMode(mode);
         }
     }
-
     function applyTool(toolName) {
         if (toolName === 'UNDO') { performUndo(); return; }
         
