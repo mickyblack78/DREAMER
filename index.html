@@ -649,8 +649,9 @@ function triggerQSave() {
             div.onclick = () => { appState.penColor = color; setMode(null); };
             box.appendChild(div);
         });
-        raw.githubusercontent.com
+    } // <--- This was the missing bracket!
+
+    init(); // <--- Added this so your app actually turns on when loaded!
 </script>
 </body>
 </html>
-            
