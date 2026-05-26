@@ -1,657 +1,314 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>STUDIO</title>
+    <title>DREAMER</title>
     <style>
-        :root {
-            --neon-cyan: #00ffff;
-            --electric-blue: #2e5bff;
-            --neon-glow: rgba(0, 255, 255, 0.4);
-            --success-green: #00ff00;
-            --bg: #000000;
-            --panel: rgba(10, 10, 10, 0.98);
-            --safe-zone: 60px;
-        }
-
-        * {
-            margin: 0; padding: 0; box-sizing: border-box;
-            -webkit-touch-callout: none; -webkit-user-select: none;
-            user-select: none; touch-action: none;
-        }
-
-        body { background: var(--bg); height: 100vh; width: 100vw; overflow: hidden; font-family: monospace; }
-
-        /* VIEWPORT FOR PAN/ZOOM */
-        #viewport {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            transform-origin: 0 0; 
-        }
-
+        :root { --nc: #00ffff; --eb: #2e5bff; --bg: #000; --panel: rgba(10, 10, 10, 0.98); }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; font-family: monospace; }
+        body { background: var(--bg); height: 100vh; width: 100vw; overflow: hidden; }
+        #viewport { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
         canvas { position: absolute; top: 0; left: 0; display: block; }
-        #main-canvas { z-index: 10; } /* Base Picture */
-        #temp-canvas { z-index: 20; } /* Edits / Strokes */
-
-        .dock {
-            position: fixed; bottom: var(--safe-zone); left: 50%;
-            transform: translateX(-50%); z-index: 9999;
-            display: flex; gap: 15px; padding: 15px 25px;
-            background: var(--panel); border: 1px solid #333;
-            border-radius: 60px; box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        .btn {
-            width: 65px; height: 50px; border-radius: 25px;
-            border: 1px solid #333; background: #222;
-            display: flex; align-items: center; justify-content: center;
-            color: #666; font-size: 11px; font-weight: 900; transition: 0.2s;
-            cursor: pointer; text-transform: uppercase;
-        }
-
-        /* STRICT HIGHLIGHT STATES */
-        .btn.active { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 35px var(--neon-glow); }
-        .btn.qsave-active { border-color: var(--electric-blue) !important; color: var(--electric-blue) !important; box-shadow: 0 0 35px var(--electric-blue) !important; }
-        .btn.success { border-color: var(--success-green) !important; color: var(--success-green) !important; box-shadow: 0 0 35px var(--success-green) !important; }
-
-        .overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 2000; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .grid-3x5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 90%; max-width: 400px; }
-        .grid-btn { aspect-ratio: 1; background: #111; border: 1px solid #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; cursor: pointer; }
-        .grid-btn:active { background: var(--neon-cyan); color: var(--neon-cyan); }
-
-        .menu-list { width: 80%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-        .menu-row { display: flex; gap: 10px; width: 100%; }
-        .menu-item { flex: 1; padding: 20px; background: #111; border: 1px solid #444; color: white; text-align: center; font-size: 12px; cursor: pointer; }
-
-        .recent-colors { display: flex; gap: 5px; margin-top: 20px; width: 90%; max-width: 400px; overflow-x: auto; padding: 10px 0; border-top: 1px solid #333;}
-        .color-swatch { width: 30px; height: 30px; border-radius: 5px; border: 1px solid #fff; flex-shrink: 0; cursor: pointer;}
-
-        /* VAULT LAYOUT */
-        .vault-scroll-wrap { display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; max-height: 90vh; overflow-y: auto; padding-bottom: 20px; }
-        .vault-container { width: 90%; max-width: 300px; border: 1px solid #333; background: #050505; display: flex; flex-direction: column; }
-        .vault-box { width: 100%; height: 25vh; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #333; background: #000; }
-        .vault-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .vault-label { position: absolute; top: 5px; left: 5px; font-size: 10px; color: #888; font-weight: bold; }
-        .vault-action-bar { display: flex; width: 100%; height: 40px; }
-        .vault-action-bar div { flex: 15; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border-right: 1px solid #333; cursor: pointer; }
-        .vault-action-bar div:last-child { border-right: none; }
-        .vault-action-bar div:active { background: var(--neon-cyan); color: #000; }
-
-        /* SLIDERS (Top to Bottom) */
-        .sliders-wrap { display: flex; flex-direction: column; gap: 30px; width: 90%; max-width: 400px; pointer-events: auto; }
-        .bar-container { position: relative; height: 30px; width: 100%; }
-        .bar-bg { position: absolute; top: 11px; width: 100%; height: 8px; border-radius: 4px; border: 1px solid #444; }
-        #bar3-bg { background: linear-gradient(to right, #000, gray, #fff); } /* SIZE */
-        #bar2-bg { background: linear-gradient(to right, #000, red, yellow, lime, cyan, blue, magenta, red); } /* SPECTRUM 2 */
-        #bar1-bg { background: linear-gradient(to right, #000, red, yellow, lime, cyan, blue, magenta, red, #fff); } /* BLACK TO WHITE SPECTRUM */
-        .loupe { position: absolute; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; top: 5px; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; font-size: 0px; background: #888; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5);}
+        #temp-canvas { z-index: 20; }
+        .dock { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; gap: 15px; padding: 15px 25px; background: var(--panel); border: 1px solid #333; border-radius: 60px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        .btn { width: 65px; height: 50px; border-radius: 25px; border: 1px solid #333; background: #222; display: flex; align-items: center; justify-content: center; color: #666; font-size: 11px; font-weight: 900; transition: 0.2s; cursor: pointer; }
+        .btn.active { border-color: var(--nc); color: var(--nc); box-shadow: 0 0 35px rgba(0, 255, 255, 0.4); }
+        .btn.qsave-active { border-color: var(--eb)!important; color: var(--eb)!important; box-shadow: 0 0 35px var(--eb)!important; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 90%; max-width: 400px; }
+        .g-btn { aspect-ratio: 1; background: #111; border: 1px solid #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; cursor: pointer; text-align: center; }
+        .g-btn:active { background: var(--nc); color: #000; }
+        .m-list { width: 80%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        .m-row { display: flex; gap: 10px; width: 100%; }
+        .m-item { flex: 1; padding: 20px; background: #111; border: 1px solid #444; color: #fff; text-align: center; font-size: 12px; cursor: pointer; }
+        .r-colors { display: flex; gap: 5px; margin-top: 20px; width: 90%; max-width: 400px; overflow-x: auto; padding: 10px 0; border-top: 1px solid #333; }
+        .swatch { width: 30px; height: 30px; border-radius: 5px; border: 1px solid #fff; flex-shrink: 0; cursor: pointer; }
+        .v-wrap { display: flex; flex-direction: column; gap: 20px; width: 100%; max-height: 90vh; overflow-y: auto; align-items: center; padding-bottom: 20px; }
+        .v-box { width: 90%; max-width: 300px; border: 1px solid #333; background: #050505; position: relative; }
+        .v-img { width: 100%; height: 25vh; object-fit: contain; border-bottom: 1px solid #333; background: #000; }
+        .v-bar { display: flex; height: 40px; }
+        .v-bar div { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border-right: 1px solid #333; cursor: pointer; }
+        .v-bar div:active { background: var(--nc); color: #000; }
+        .panel { background: var(--panel); border: 1px solid #333; padding: 20px; border-radius: 20px; width: 90%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 15px; color: #888; font-size: 10px; }
+        input[type="range"] { width: 100%; }
     </style>
 </head>
 <body>
 
-<!-- Hidden File Loaders -->
-<input type="file" id="load-file" accept="image/*" style="display: none;">
-<input type="file" id="import-file" accept="image/*" style="display: none;">
-<input type="file" id="sticker-file" accept="image/*" style="display: none;">
-
-<!-- Canvas Container for Pan/Zoom -->
 <div id="viewport">
     <canvas id="main-canvas"></canvas>
     <canvas id="temp-canvas"></canvas>
 </div>
 
-    <!-- DOCK -->
-<div class="dock" id="main-dock">
+<!-- DOCK -->
+<div class="dock">
     <div class="btn" id="btn-menu" onclick="handleDockTap('menu')">MENU</div>
+    <div class="btn" id="btn-edit" style="display:none"></div>
     <div class="btn" id="btn-custom" onclick="handleDockTap('custom')">CUSTOM</div>
     <div class="btn" id="btn-qsave" onclick="triggerQSave()">QSAVE</div>
 </div>
 
-<!-- MENU OVERLAY -->
+<!-- MENUS -->
 <div class="overlay" id="overlay-menu">
-    <div class="menu-list">
-        <div class="menu-row">
-            <div class="menu-item" id="btn-edit" onclick="setMode('edit')">EDIT</div>
-            <div class="menu-item" onclick="switchOverlay('menu', 'color')">BRUSH</div>
-        </div>
-        <div class="menu-row">
-            <div class="menu-item" onclick="document.getElementById('load-file').click()">LOAD</div>
-            <div class="menu-item" onclick="document.getElementById('import-file').click()">IMPORT</div>
-        </div>
-        <div class="menu-item" onclick="switchOverlay('menu', 'tools')">TOOLS</div>
-        <div class="menu-item" onclick="switchOverlay('menu', 'vault')">VAULTS</div>
+    <div class="m-list">
+        <div class="m-row"><div class="m-item" onclick="setMode('edit')">EDIT</div><div class="m-item" onclick="switchOverlay('color')">BRUSH</div></div>
+        <div class="m-row"><div class="m-item" onclick="loadFile('load')">LOAD</div><div class="m-item" onclick="loadFile('import')">IMPORT</div></div>
+        <div class="m-item" onclick="switchOverlay('tools')">TOOLS</div>
+        <div class="m-item" onclick="switchOverlay('vault')">VAULTS</div>
     </div>
 </div>
 
-<!-- BRUSH & COLOR OVERLAY -->
 <div class="overlay" id="overlay-color">
-    <div style="background: var(--panel); border: 1px solid #333; padding: 20px; border-radius: 20px; width: 90%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 20px;">
-        <canvas id="brush-preview" width="80" height="80" style="border-radius: 50%; border: 2px solid #fff;"></canvas>
-        <input type="color" id="native-color" value="#00ffff" style="width: 100%; height: 50px; background: none; border: none; cursor: pointer;">
-        <div style="font-size: 10px; color: #888; margin-top: -15px;">TAP COLOR ABOVE</div>
-        <div style="width: 100%; text-align: left; color: #888; font-size: 10px;">BRUSH SIZE</div>
-        <input type="range" id="slider-size" min="1" max="100" value="20" style="width: 100%;">
-        <div style="width: 100%; text-align: left; color: #888; font-size: 10px;">DARK TO LIGHT</div>
-        <input type="range" id="slider-lightness" min="-50" max="50" value="0" style="width: 100%;">
-        <div style="width: 100%; text-align: left; color: #888; font-size: 10px;">GLOW</div>
-        <input type="range" id="slider-glow" min="0" max="50" value="0" style="width: 100%;">
-        <div class="btn" style="width: 100%; margin-top: 10px; border-color: #444;" onclick="switchOverlay('color', 'menu')">BACK TO MENU</div>
+    <div class="panel">
+        <canvas id="brush-preview" width="80" height="80" style="border-radius:50%; border:2px solid #fff;"></canvas>
+        <input type="color" id="native-color" value="#00ffff" style="width:100%; height:50px; background:none; border:none; cursor:pointer;">
+        <div style="margin-top:-10px;">TAP COLOR ABOVE</div>
+        <div style="width:100%; text-align:left;">BRUSH SIZE</div><input type="range" id="slider-size" min="1" max="100" value="20">
+        <div style="width:100%; text-align:left;">DARK TO LIGHT</div><input type="range" id="slider-lightness" min="-50" max="50" value="0">
+        <div style="width:100%; text-align:left;">GLOW</div><input type="range" id="slider-glow" min="0" max="50" value="0">
+        <div class="btn" style="width:100%; border-color:#444;" onclick="switchOverlay('menu')">BACK</div>
     </div>
 </div>
 
-<!-- CUSTOM FAVORITES OVERLAY -->
 <div class="overlay" id="overlay-custom">
-    <div class="menu-list">
-        <div class="menu-row">
-            <div class="menu-item" onclick="setMode('edit')">FAV 1: EDIT</div>
-            <div class="menu-item" onclick="applyTool('STICKER')">FAV 2: STICKER</div>
-        </div>
-        <div class="menu-row">
-            <div class="menu-item" onclick="applyTool('TEXT')">FAV 3: TEXT</div>
-            <div class="menu-item" onclick="triggerSave()">FAV 4: SAVE</div>
-        </div>
-        <div class="menu-item" onclick="switchOverlay('custom', 'menu')">BACK</div>
+    <div class="m-list">
+        <div class="m-row"><div class="m-item" onclick="setMode('edit')">FAV 1: EDIT</div><div class="m-item" onclick="applyTool('STICKER')">FAV 2: STICKER</div></div>
+        <div class="m-row"><div class="m-item" onclick="applyTool('TEXT')">FAV 3: TEXT</div><div class="m-item" onclick="triggerSave()">FAV 4: SAVE</div></div>
+        <div class="m-item" onclick="switchOverlay('menu')">BACK</div>
     </div>
 </div>
 
-<!-- TOOLS OVERLAY -->
 <div class="overlay" id="overlay-tools">
-    <div class="grid-3x5">
-        <div class="grid-btn" onclick="applyTool('STICKER')">STICKER</div>
-        <div class="grid-btn" onclick="applyTool('ERASER')">ERASER</div>
-        <div class="grid-btn" onclick="applyTool('UNDO')">UNDO</div>
-        <div class="grid-btn" onclick="applyTool('SMOOTH')">SMOOTH</div>
-        <div class="grid-btn" onclick="applyTool('TEXT')">TEXT</div>
-        <div class="grid-btn" onclick="applyTool('CUT')">CUT</div>
-        <div class="grid-btn" onclick="applyTool('COPY')">COPY</div>
-        <div class="grid-btn" onclick="applyTool('PASTE')">PASTE</div>
-        <div class="grid-btn" onclick="applyTool('FILL')">FILL</div>
-        <div class="grid-btn" onclick="applyTool('PICKER')">PICKER</div>
-        <div class="grid-btn" onclick="applyTool('PH...AI')">PH...AI</div>
-        <div class="grid-btn" onclick="switchOverlay('tools', 'menu')">BACK</div>
+    <div class="grid">
+        <div class="g-btn" onclick="applyTool('STICKER')">STICKER</div><div class="g-btn" onclick="applyTool('ERASER')">ERASER</div><div class="g-btn" onclick="applyTool('UNDO')">UNDO</div>
+        <div class="g-btn" onclick="applyTool('SMOOTH')">SMOOTH</div><div class="g-btn" onclick="applyTool('TEXT')">TEXT</div><div class="g-btn" onclick="applyTool('CUT')">CUT</div>
+        <div class="g-btn" onclick="applyTool('COPY')">COPY</div><div class="g-btn" onclick="applyTool('PASTE')">PASTE</div><div class="g-btn" onclick="applyTool('FILL')">FILL</div>
+        <div class="g-btn" onclick="applyTool('PICKER')">PICKER</div><div class="g-btn" onclick="triggerAI()">PH...AI</div><div class="g-btn" onclick="switchOverlay('menu')">BACK</div>
     </div>
-    <div class="recent-colors" id="recent-colors-box"></div>
+    <div class="r-colors" id="recent-colors-box"></div>
 </div>
 
-<!-- VAULT OVERLAY -->
 <div class="overlay" id="overlay-vault">
-    <div class="vault-scroll-wrap">
-        <!-- Vault 1 -->
-        <div class="vault-container">
-            <div class="vault-box">
-                <span class="vault-label">VAULT 1</span>
-                <img id="img-vault-0">
-            </div>
-            <div class="vault-action-bar">
-                <div onclick="vaultAction(0, 'LOAD')">LOAD</div>
-                <div onclick="vaultAction(0, 'SAVEAS')">SAVE AS</div>
-                <div onclick="setMode(null)">EXIT</div>
-            </div>
-        </div>
-        <!-- Vault 2 -->
-        <div class="vault-container">
-            <div class="vault-box">
-                <span class="vault-label">VAULT 2</span>
-                <img id="img-vault-1">
-            </div>
-            <div class="vault-action-bar">
-                <div onclick="vaultAction(1, 'LOAD')">LOAD</div>
-                <div onclick="vaultAction(1, 'SAVEAS')">SAVE AS</div>
-                <div onclick="setMode(null)">EXIT</div>
-            </div>
-        </div>
-    </div>
+    <div class="v-wrap" id="vault-list"></div>
 </div>
 
 <script>
-const appState = {
-    activeMode: null,
-    activeTool: null,
-    loadedName: "",
-    penColor: '',
-    penSize: 20,
-    p1: 0.5,
-    p2: 0.5,
-    recentColors: [],
-    undoStack:[],
-    vaults: [null, null],
-    vaultIdx: 0,
-    dpr: window.devicePixelRatio || 1,
-    panX: 0,
-    panY: 0,
-    scale: 1
-};
-
-const viewport = document.getElementById('viewport');
-const main = document.getElementById('main-canvas');
-const temp = document.getElementById('temp-canvas');
-const mctx = main.getContext('2d');
-const tctx = temp.getContext('2d');
+// UTILS & STATE
+const $ = id => document.getElementById(id), $$ = q => document.querySelectorAll(q);
+const app = { activeMode: null, activeTool: null, loadedName: "export", penColor: '#00ffff', penSize: 20, glow: 0, baseHex: '#00ffff', recentColors: [], undo: [], vaults: [null, null], vaultIdx: 0, panX: 0, panY: 0, scale: 1 };
+const viewport = $('viewport'), main = $('main-canvas'), temp = $('temp-canvas'), mctx = main.getContext('2d'), tctx = temp.getContext('2d');
 
 function init() {
-    main.width = temp.width = window.innerWidth * appState.dpr;
-    main.height = temp.height = window.innerHeight * appState.dpr;
-    main.style.width = temp.style.width = window.innerWidth + 'px';
-    main.style.height = temp.style.height = window.innerHeight + 'px';
-    mctx.scale(appState.dpr, appState.dpr);
-    tctx.scale(appState.dpr, appState.dpr);
-    mctx.lineCap = tctx.lineCap = 'round';
-    mctx.lineJoin = tctx.lineJoin = 'round';
-    setTimeout(updateColor, 100);
-    for(let i=0;i<2;i++){ 
-        appState.vaults[i] = localStorage.getItem('vault'+i); 
-        if(appState.vaults[i]) document.getElementById('img-vault-'+i).src = appState.vaults[i]; 
-    } 
-    pushUndo('init');
+    main.width = temp.width = innerWidth; main.height = temp.height = innerHeight;
+    main.style.width = temp.style.width = innerWidth + 'px'; main.style.height = temp.style.height = innerHeight + 'px';
+    mctx.lineCap = tctx.lineCap = mctx.lineJoin = tctx.lineJoin = 'round';
+    
+    let vHtml = ''; 
+    for(let i=0; i<2; i++) {
+        app.vaults[i] = localStorage.getItem('v'+i);
+        vHtml += `<div class="v-box"><span style="position:absolute; margin:5px; font-size:10px; color:#888; font-weight:bold;">VAULT ${i+1}</span><img class="v-img" id="img-v${i}" src="${app.vaults[i]||''}"><div class="v-bar"><div onclick="vaultAct(${i},'load')">LOAD</div><div onclick="vaultAct(${i},'save')">SAVE AS</div><div onclick="setMode(null)">EXIT</div></div></div>`;
+    }
+    $('vault-list').innerHTML = vHtml; updateColor(); pushUndo('init');
 }
-function setMode(mode) {
-        document.querySelectorAll('.btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.overlay').forEach(overlay => overlay.style.display = 'none');
-        appState.activeMode = mode;
 
-        if (mode === 'menu') {
-            document.getElementById('btn-menu').classList.add('active');
-            document.getElementById('overlay-menu').style.display = 'flex';
-        } else if (mode === 'custom') {
-            document.getElementById('btn-custom').classList.add('active');
-            document.getElementById('overlay-custom').style.display = 'flex';
-        } else if (mode === 'edit') {
-            document.getElementById('btn-edit').classList.add('active');
-            appState.activeTool = 'PAINTBRUSH'; // Edit always equips paintbrush
-        } else {
-            appState.activeTool = null; // Clears everything when closed
-        }
-    }
+// NAVIGATION
+function setMode(m) {
+    $$('.btn').forEach(b => b.classList.remove('active')); $$('.overlay').forEach(o => o.style.display = 'none');
+    app.activeMode = m; app.activeTool = (m === 'edit') ? 'PAINTBRUSH' : null;
+    if(m === 'menu' || m === 'custom') { $(`btn-${m}`).classList.add('active'); switchOverlay(m); }
+    else if(m === 'edit') $('btn-edit').classList.add('active');
+}
 
-    function handleDockTap(mode) {
-        const menuBtn = document.getElementById('btn-menu');
-        
-        // Check if Menu currently has a Tool active
-        if (mode === 'menu' && menuBtn.innerText !== 'MENU') {
-            menuBtn.innerText = 'MENU';
-            appState.activeTool = null;
-            setMode('menu'); 
-            switchOverlay('menu', 'tools'); // Reopen tool pathway
-            return;
-        }
+function handleDockTap(m) {
+    const btn = $('btn-menu');
+    if(m === 'menu' && btn.innerText !== 'MENU' && btn.innerText !== 'THINKING...') { btn.innerText = 'MENU'; setMode('menu'); switchOverlay('tools'); return; }
+    if(app.activeMode === m) { setMode(null); if(m === 'menu') btn.innerText = 'MENU'; }
+    else if(!app.activeMode || app.activeMode === 'edit') setMode(m);
+}
 
-        if (appState.activeMode === mode) {
-            setMode(null); // Tap active to close it
-            if (mode === 'menu') menuBtn.innerText = 'MENU';
-        } else {
-            // STRICT EXCLUSIVE CHECK
-            // Exception added: 'edit' mode has no panel, so we allow tapping MENU to escape it!
-            if (appState.activeMode !== null && appState.activeMode !== 'edit') return;
-            setMode(mode);
-        }
-    }
-    function applyTool(toolName) {
-        if (toolName === 'UNDO') { performUndo(); return; }
-        
-        appState.activeTool = toolName;
-        document.getElementById('btn-menu').innerText = toolName;
-        document.querySelectorAll('.overlay').forEach(overlay => overlay.style.display = 'none');
-        
-        if (toolName === 'STICKER') {
-            document.getElementById('sticker-file').click();
-        }
-    }
+function switchOverlay(to) { $$('.overlay').forEach(o => o.style.display = 'none'); if(to !== 'none') $(`overlay-${to}`).style.display = 'flex'; }
 
-    function switchOverlay(from, to) {
-        document.getElementById(`overlay-${from}`).style.display = 'none';
-        document.getElementById(`overlay-${to}`).style.display = 'flex';
-    }
+function applyTool(t) {
+    if(t === 'UNDO') return performUndo();
+    app.activeTool = t; $('btn-menu').innerText = t; switchOverlay('none');
+    if(t === 'STICKER') loadFile('sticker');
+}
 
-    let isPanning = false;
-    let startX = 0, startY = 0, initialDist = 0;
-    let pinchCenterX = 0, pinchCenterY = 0;
-    let isDrawing = false;
-    let lastX = 0, lastY = 0;
-
-    function getCoords(e) {
-        const rect = temp.getBoundingClientRect(); // The built-in invisible dots!
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { 
-            x: (clientX - rect.left) / appState.scale, 
-            y: (clientY - rect.top) / appState.scale 
-        };
-    }
-
-    viewport.addEventListener('touchstart', (e) => {
-        const canDraw = (appState.activeMode === 'edit') || (appState.activeMode === 'menu' && appState.activeTool === 'ERASER');
-        
-        if (canDraw && e.touches.length === 1) {
-            isDrawing = true;
-            const {x, y} = getCoords(e);
-            lastX = x; lastY = y;
-            return;
-        }
-
-        const tool = appState.activeTool;
-        if (appState.activeMode === 'menu' && tool && tool !== 'STICKER') {
-            const {x, y} = getCoords(e);
-            if (tool === 'PICKER') {
-                const p = mctx.getImageData(x*appState.dpr, y*appState.dpr, 1, 1).data;
-                appState.penColor = `rgb(${p[0]},${p[1]},${p[2]})`;
-                document.getElementById('btn-color').style.color = appState.penColor;
-            } else if (tool === 'TEXT') {
-                const txt = prompt("Text:");
-                if (txt) { tctx.font = `${appState.penSize*2}px monospace`; tctx.fillStyle = appState.penColor; tctx.fillText(txt, x, y); pushUndo('text'); }
-            } else if (tool === 'PASTE' && window.clipboard) {
-                createImageBitmap(window.clipboard).then(img => {
-                    tctx.drawImage(img, x, y, img.width/appState.dpr, img.height/appState.dpr);
-                    pushUndo('paste');
-                });
-            } else if (tool === 'FILL') {
-                tctx.fillStyle = appState.penColor; tctx.fillRect(0,0, temp.width, temp.height); pushUndo('fill');
-    
-            } else if (tool === 'CUT' || tool === 'COPY') {
-                window.dragX = x; window.dragY = y; isDrawing = true;
-            } else if (tool === 'SMOOTH') {
-                isDrawing = true; lastX = x; lastY = y;
-                
-            }
-            return;
-        }
-        if (appState.activeMode === 'edit') return;
-        
-        if (e.touches.length === 1) {
-            isPanning = true;
-            startX = e.touches[0].clientX - appState.panX;
-            startY = e.touches[0].clientY - appState.panY;
-        } else if (e.touches.length === 2) {
-            isPanning = false;
-            initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        }
-    }, {passive: false});
-
-    viewport.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-
-        if (isDrawing) {
-            const {x, y} = getCoords(e);
-            tctx.lineCap = 'round';
-            if (appState.activeMode === 'menu' && appState.activeTool === 'ERASER') {
-                tctx.globalCompositeOperation = 'destination-out';
-            } else {
-                tctx.globalCompositeOperation = 'source-over';
-                tctx.strokeStyle = appState.penColor;
-            }
-            tctx.lineWidth = appState.penSize / appState.scale;
-            tctx.beginPath(); tctx.moveTo(lastX, lastY); tctx.lineTo(x, y); tctx.stroke();
-            lastX = x; lastY = y;
-            return;
-        }
-
-        const tool = appState.activeTool;
-        if (appState.activeMode === 'menu' && tool && tool !== 'STICKER') {
-            const {x, y} = getCoords(e);
-            if (isDrawing && (tool === 'CUT' || tool === 'COPY')) {
-                tctx.clearRect(0,0, temp.width, temp.height);
-                tctx.strokeStyle = '#0ff'; tctx.setLineDash([5, 5]); tctx.lineWidth = 2/appState.scale;
-                tctx.strokeRect(window.dragX, window.dragY, x - window.dragX, y - window.dragY);
-                tctx.setLineDash([]);
-            } else if (isDrawing && tool === 'SMOOTH') {
-                tctx.lineCap = 'round'; tctx.lineWidth = appState.penSize / appState.scale;
-                tctx.filter = 'blur(4px)'; tctx.strokeStyle = 'rgba(255,255,255,0.1)';
-                tctx.beginPath(); tctx.moveTo(lastX, lastY); tctx.lineTo(x, y); tctx.stroke();
-                tctx.filter = 'none'; lastX = x; lastY = y;
-            }
-            return;
-        }
-        if (appState.activeMode === 'edit') return;
-
-        if (e.touches.length === 1 && isPanning) {
-            appState.panX = e.touches[0].clientX - startX;
-            appState.panY = e.touches[0].clientY - startY;
-        } else if (e.touches.length === 2) {
-            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            if(initialDist > 0) {
-                const scaleRatio = (dist / initialDist);
-                const newScale = Math.min(Math.max(0.2, appState.scale * scaleRatio), 145); // Better zoom depth
-
-                appState.panX = pinchCenterX - (pinchCenterX - appState.panX) * (newScale / appState.scale);
-                appState.panY = pinchCenterY - (pinchCenterY - appState.panY) * (newScale / appState.scale);
-                appState.scale = newScale;
-                initialDist = dist;
-                pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            }
-        }
-        viewport.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.scale})`;
-    }, {passive: false});
-
-    window.addEventListener('touchend', (e) => {
-        if (isDrawing) { 
-            isDrawing = false; 
-            const tool = appState.activeTool;
-            if (tool === 'CUT' || tool === 'COPY') {
-                const end = getCoords(e.changedTouches[0]);
-                const w = (end.x - window.dragX)*appState.dpr, h = (end.y - window.dragY)*appState.dpr;
-                tctx.clearRect(0,0, temp.width, temp.height);
-                if (Math.abs(w) > 5 && Math.abs(h) > 5) {
-                    window.clipboard = mctx.getImageData(window.dragX*appState.dpr, window.dragY*appState.dpr, w, h);
-                    if (tool === 'CUT') { mctx.clearRect(window.dragX*appState.dpr, window.dragY*appState.dpr, w, h); pushUndo('cut'); }
+// UNIFIED FILE LOADER
+function loadFile(type) {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = e => {
+        const file = e.target.files[0]; if(!file) return;
+        if(type === 'load') app.loadedName = file.name.split('.')[0];
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => {
+                if(type === 'load') {
+                    main.width = temp.width = img.width; main.height = temp.height = img.height;
+                    main.style.width = temp.style.width = img.width+'px'; main.style.height = temp.style.height = img.height+'px';
+                    app.scale = Math.min(innerWidth/img.width, innerHeight/img.height) * 0.9;
+                    app.panX = (innerWidth - img.width * app.scale) / 2; app.panY = (innerHeight - img.height * app.scale) / 2;
+                    viewport.style.transform = `translate(${app.panX}px, ${app.panY}px) scale(${app.scale})`;
+                    mctx.clearRect(0, 0, main.width, main.height); mctx.drawImage(img, 0, 0);
+                } else {
+                    const rect = temp.getBoundingClientRect();
+                    const cx = (innerWidth/2 - rect.left) / app.scale, cy = (innerHeight/2 - rect.top) / app.scale;
+                    const r = Math.min((innerWidth/app.scale)/img.width, (innerHeight/app.scale)/img.height) * (type==='import'?0.8:1);
+                    tctx.drawImage(img, cx - (img.width*r)/2, cy - (img.height*r)/2, img.width*r, img.height*r);
                 }
-                setMode(null);
-            } else { pushUndo('stroke'); addRecentColor(appState.penColor); }
-        }
-        isPanning = false;
-    });
-    function pushUndo(type) {
-        if (appState.undoStack.length >= 3) appState.undoStack.shift();
-        appState.undoStack.push({
-            type: type,
-            tempData: temp.toDataURL() 
-        });
-    }
-
-    function triggerSave() {
-        const link = document.createElement('a');
-        link.download = (appState.loadedName || 'studio_export') + '.png';
-        mctx.drawImage(temp, 0, 0, main.width/appState.dpr, main.height/appState.dpr);
-        link.href = main.toDataURL();
-        link.click();
-    }
-    
-    function performUndo() {
-        if (appState.undoStack.length <= 1) return;
-        const undoneState = appState.undoStack.pop(); 
-        const prevState = appState.undoStack[appState.undoStack.length - 1];
-
-        if (undoneState.type === 'qsave') {
-            const fallbackVault = appState.vaults[appState.vaultIdx];
-            if (fallbackVault) {
-                const mImg = new Image();
-                mImg.onload = () => {
-                    mctx.clearRect(0,0, main.width, main.height);
-                    mctx.drawImage(mImg, 0,0, main.width/appState.dpr, main.height/appState.dpr);
-                };
-                mImg.src = fallbackVault;
-            }
-        }
-
-        const tImg = new Image();
-        tImg.onload = () => {
-            tctx.clearRect(0,0, temp.width, temp.height);
-            tctx.drawImage(tImg, 0,0, temp.width/appState.dpr, temp.height/appState.dpr);
+                pushUndo(type); setMode(null);
+            };
+            img.src = ev.target.result;
         };
-        tImg.src = prevState.tempData;
+        reader.readAsDataURL(file);
+    };
+    inp.click();
+}
+
+// COLORS
+function updateColor() {
+    app.penSize = +$('slider-size').value; app.glow = +$('slider-glow').value; const l = +$('slider-lightness').value;
+    app.penColor = `color-mix(in srgb, ${app.baseHex}, ${l<0?'black':'white'} ${Math.abs(l)}%)`;
+    const c = $('brush-preview'), ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height); ctx.beginPath(); ctx.arc(40,40,app.penSize/2,0,Math.PI*2);
+    ctx.fillStyle = ctx.shadowColor = app.penColor; ctx.shadowBlur = app.glow; ctx.fill();
+}
+$('native-color').oninput = e => { app.baseHex = e.target.value; updateColor(); };
+['size','lightness','glow'].forEach(id => $(`slider-${id}`).oninput = updateColor);
+
+function addColor(c) {
+    if(app.recentColors[0] === c) return;
+    app.recentColors = [c, ...app.recentColors.filter(x => x !== c)].slice(0,10);
+    $('recent-colors-box').innerHTML = app.recentColors.map(x => `<div class="swatch" style="background:${x}" onclick="app.penColor='${x}';setMode(null)"></div>`).join('');
+}
+
+// TOUCH EVENTS
+let isDraw=false, isPan=false, sx=0, sy=0, dist=0, px=0, py=0, lx=0, ly=0;
+const getC = e => { const t = e.touches?e.touches[0]:e, r = temp.getBoundingClientRect(); return { x: (t.clientX-r.left)/app.scale, y: (t.clientY-r.top)/app.scale }; };
+
+viewport.addEventListener('touchstart', e => {
+    const t = app.activeTool, m = app.activeMode, c = getC(e);
+    if((m === 'edit' || (m === 'menu' && t === 'ERASER')) && e.touches.length === 1) { isDraw=true; lx=c.x; ly=c.y; return; }
+    if(m === 'menu' && t && t !== 'STICKER') {
+        if(t === 'PICKER') { const p = mctx.getImageData(c.x, c.y, 1, 1).data; app.penColor=`rgb(${p[0]},${p[1]},${p[2]})`; updateColor(); }
+        else if(t === 'TEXT') { const txt=prompt("Text:"); if(txt){ tctx.font=`${app.penSize*2}px monospace`; tctx.fillStyle=app.penColor; tctx.fillText(txt,c.x,c.y); pushUndo('text'); } }
+        else if(t === 'PASTE' && window.clipboard) createImageBitmap(window.clipboard).then(img => { tctx.drawImage(img,c.x,c.y); pushUndo('paste'); });
+        else if(t === 'FILL') { tctx.fillStyle=app.penColor; tctx.fillRect(0,0,temp.width,temp.height); pushUndo('fill'); }
+        else if(t === 'CUT' || t === 'COPY') { window.dx=c.x; window.dy=c.y; isDraw=true; }
+        else if(t === 'SMOOTH') { isDraw=true; lx=c.x; ly=c.y; }
+        return;
     }
+    if(m === 'edit') return;
+    if(e.touches.length === 1) { isPan=true; sx = e.touches[0].clientX-app.panX; sy = e.touches[0].clientY-app.panY; }
+    else if(e.touches.length === 2) { isPan=false; dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); px = (e.touches[0].clientX+e.touches[1].clientX)/2; py = (e.touches[0].clientY+e.touches[1].clientY)/2; }
+}, {passive:false});
+
+viewport.addEventListener('touchmove', e => {
+    e.preventDefault(); const t = app.activeTool, m = app.activeMode, c = getC(e);
+    if(isDraw) {
+        if(t === 'CUT' || t === 'COPY') {
+            tctx.clearRect(0,0,temp.width,temp.height); tctx.strokeStyle='#0ff'; tctx.setLineDash([5,5]); tctx.lineWidth=2/app.scale;
+            tctx.strokeRect(window.dx, window.dy, c.x-window.dx, c.y-window.dy); tctx.setLineDash([]);
+        } else {
+            tctx.lineCap='round'; tctx.lineWidth=app.penSize/app.scale;
+            if(m === 'menu' && t === 'ERASER') tctx.globalCompositeOperation='destination-out';
+            else { tctx.globalCompositeOperation='source-over'; tctx.strokeStyle=app.penColor; }
+            if(t === 'SMOOTH') { tctx.filter='blur(4px)'; tctx.strokeStyle='rgba(255,255,255,0.1)'; }
+            tctx.beginPath(); tctx.moveTo(lx,ly); tctx.lineTo(c.x,c.y); tctx.stroke(); tctx.filter='none'; lx=c.x; ly=c.y;
+        }
+        return;
+    }
+    if(m === 'edit' || m === 'menu') return;
+    if(e.touches.length === 1 && isPan) { app.panX = e.touches[0].clientX-sx; app.panY = e.touches[0].clientY-sy; }
+    else if(e.touches.length === 2 && dist>0) {
+        const nd = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY), ns = Math.min(Math.max(0.2, app.scale*(nd/dist)), 145);
+        app.panX = px - (px-app.panX)*(ns/app.scale); app.panY = py - (py-app.panY)*(ns/app.scale); app.scale = ns; dist = nd;
+        px = (e.touches[0].clientX+e.touches[1].clientX)/2; py = (e.touches[0].clientY+e.touches[1].clientY)/2;
+    }
+    viewport.style.transform = `translate(${app.panX}px, ${app.panY}px) scale(${app.scale})`;
+}, {passive:false});
+
+window.addEventListener('touchend', e => {
+    if(isDraw) {
+        isDraw=false; const t = app.activeTool;
+        if(t === 'CUT' || t === 'COPY') {
+            const c = getC(e.changedTouches[0]), w=c.x-window.dx, h=c.y-window.dy; tctx.clearRect(0,0,temp.width,temp.height);
+            if(Math.abs(w)>5 && Math.abs(h)>5) { window.clipboard = mctx.getImageData(window.dx, window.dy, w, h); if(t === 'CUT') { mctx.clearRect(window.dx, window.dy, w, h); pushUndo('cut'); } }
+            setMode(null);
+        } else { pushUndo('stroke'); addColor(app.penColor); }
+    }
+    isPan=false;
+});
+
+// VAULTS & UNDO
+function pushUndo(type) { if(app.undo.length>=3) app.undo.shift(); app.undo.push({ type, d: temp.toDataURL() }); }
+function performUndo() {
+    if(app.undo.length<=1) return; const u = app.undo.pop(), p = app.undo[app.undo.length-1];
+    if(u.type === 'qsave' && app.vaults[app.vaultIdx]) { const mImg = new Image(); mImg.onload=()=>{mctx.clearRect(0,0,main.width,main.height); mctx.drawImage(mImg,0,0);}; mImg.src = app.vaults[app.vaultIdx]; }
+    const tImg = new Image(); tImg.onload=()=>{tctx.clearRect(0,0,temp.width,temp.height); tctx.drawImage(tImg,0,0);}; tImg.src = p.d;
+}
+
+function triggerSave() { const l = document.createElement('a'); l.download = app.loadedName+'.png'; mctx.drawImage(temp,0,0); l.href = main.toDataURL(); l.click(); }
 function triggerQSave() {
-        mctx.drawImage(temp, 0, 0, main.width/appState.dpr, main.height/appState.dpr);
-        tctx.clearRect(0, 0, temp.width, temp.height);
-        pushUndo('qsave');
-        appState.vaults[appState.vaultIdx] = main.toDataURL('image/jpeg', 0.8); localStorage.setItem('vault' + appState.vaultIdx, appState.vaults[appState.vaultIdx]);
-        document.getElementById(`img-vault-${appState.vaultIdx}`).src = appState.vaults[appState.vaultIdx];
-        appState.vaultIdx = (appState.vaultIdx + 1) % 2; 
-        const qBtn = document.getElementById('btn-qsave');
-        qBtn.classList.add('qsave-active');
-        setTimeout(() => qBtn.classList.remove('qsave-active'), 2000);
+    mctx.drawImage(temp,0,0); tctx.clearRect(0,0,temp.width,temp.height); pushUndo('qsave');
+    app.vaults[app.vaultIdx] = main.toDataURL('image/jpeg',0.8); localStorage.setItem('v'+app.vaultIdx, app.vaults[app.vaultIdx]);
+    $(`img-v${app.vaultIdx}`).src = app.vaults[app.vaultIdx]; app.vaultIdx = (app.vaultIdx+1)%2;
+    const b = $('btn-qsave'); b.classList.add('qsave-active'); setTimeout(()=>b.classList.remove('qsave-active'), 2000);
+}
+function vaultAct(i, act) {
+    const d = app.vaults[i]; if(!d) return;
+    if(act === 'load') { const img = new Image(); img.onload=()=>{mctx.clearRect(0,0,main.width,main.height); mctx.drawImage(img,0,0); tctx.clearRect(0,0,temp.width,temp.height); pushUndo('load'); setMode(null);}; img.src=d; }
+    else { const l = document.createElement('a'); l.download = `Vault_${i+1}.png`; l.href = d; l.click(); }
+}
+
+// --- AI INTEGRATION ---
+function getApiKey() {
+    let key = localStorage.getItem('saved_api_key');
+    if (!key) {
+        key = prompt("Please enter your Google Gemini API Key:");
+        if (key) localStorage.setItem('saved_api_key', key);
     }
+    return key;
+}
 
-    function vaultAction(idx, action) {
-        const data = appState.vaults[idx];
-        appState.vaults[idx];
-        if (!data) return;
-        if (action === 'LOAD') {
-            const img = new Image();
-            img.onload = () => {
-                mctx.clearRect(0,0, main.width, main.height);
-                mctx.drawImage(img, 0, 0, main.width/appState.dpr, main.height/appState.dpr);
-                tctx.clearRect(0, 0, temp.width, temp.height);
-                pushUndo('load');
-                setMode(null);
-            };
-            img.src = data;
-        } else if (action === 'SAVEAS') {
-            const link = document.createElement('a');
-            link.download = `Vault_${idx+1}.png`;
-            link.href = data;
-            link.click();
-        }
-    }
+async function triggerAI() {
+    const apiKey = getApiKey();
+    if (!apiKey) return alert("AI canceled. API key required.");
 
-    
-        document.getElementById('load-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        appState.loadedName = file.name.split('.')[0];
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = () => {
-                // 1. Resize canvas perfectly to the picture
-                main.width = temp.width = img.width;
-                main.height = temp.height = img.height;
-                main.style.width = temp.style.width = img.width + 'px';
-                main.style.height = temp.style.height = img.height + 'px';
-                
-                // 2. Reset zoom to fit the phone screen
-                appState.scale = Math.min(window.innerWidth / img.width, window.innerHeight / img.height) * 0.9;
-                appState.panX = (window.innerWidth - (img.width * appState.scale)) / 2;
-                appState.panY = (window.innerHeight - (img.height * appState.scale)) / 2;
-                viewport.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.scale})`;
+    const userPrompt = prompt("Ask the AI about your drawing:", "What does this look like?");
+    if (!userPrompt) return;
 
-                // 3. Draw image and kill old math
-                appState.dpr = 1; 
-                mctx.lineCap = tctx.lineCap = 'round';
-                mctx.lineJoin = tctx.lineJoin = 'round';
-                mctx.clearRect(0,0, main.width, main.height);
-                mctx.drawImage(img, 0, 0);
-                
-                pushUndo('load');
-                setMode(null);
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file); 
-        e.target.value = ''; 
-    });
+    $('btn-menu').innerText = 'THINKING...';
+    switchOverlay('none');
+
+    try {
+        const snap = document.createElement('canvas');
+        snap.width = temp.width; snap.height = temp.height;
+        const sctx = snap.getContext('2d');
+        sctx.fillStyle = '#ffffff'; sctx.fillRect(0, 0, snap.width, snap.height);
+        sctx.drawImage(main, 0, 0); sctx.drawImage(temp, 0, 0);
         
-    document.getElementById('import-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = () => {
-                const rect = temp.getBoundingClientRect();
-                const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
-                const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
-                
-                // Restored screen-measuring math
-                const viewW = window.innerWidth / appState.scale;
-                const viewH = window.innerHeight / appState.scale;
-                const ratio = Math.min(viewW / img.width, viewH / img.height) * 0.8;
-                const drawW = img.width * ratio; 
-                const drawH = img.height * ratio;
+        const base64Image = snap.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-                tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
-                pushUndo('import');
-                setMode(null);
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file); e.target.value = '';
-    });
-
-    document.getElementById('sticker-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = () => {
-                const rect = temp.getBoundingClientRect();
-                const centerX = (window.innerWidth / 2 - rect.left) / appState.scale;
-                const centerY = (window.innerHeight / 2 - rect.top) / appState.scale;
-                
-                // Restored screen-measuring math
-                const viewW = window.innerWidth / appState.scale;
-                const viewH = window.innerHeight / appState.scale;
-                const ratio = Math.min(viewW / img.width, viewH / img.height);
-                const drawW = img.width * ratio; 
-                const drawH = img.height * ratio;
-
-                tctx.drawImage(img, centerX - (drawW/2), centerY - (drawH/2), drawW, drawH);
-                pushUndo('sticker');
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file); e.target.value = '';
-    });
-   let baseHex = '#00ffff';
-    document.getElementById('native-color').addEventListener('input', function(e) {
-        baseHex = e.target.value; updateColor();
-    });
-    document.getElementById('slider-size').addEventListener('input', updateColor);
-    document.getElementById('slider-lightness').addEventListener('input', updateColor);
-    document.getElementById('slider-glow').addEventListener('input', updateColor);
-
-    function updateColor() {
-        appState.penSize = parseInt(document.getElementById('slider-size').value);
-        appState.glow = parseInt(document.getElementById('slider-glow').value);
-        let lightness = parseInt(document.getElementById('slider-lightness').value); 
-        if (lightness < 0) appState.penColor = `color-mix(in srgb, ${baseHex}, black ${Math.abs(lightness)}%)`;
-        else appState.penColor = `color-mix(in srgb, ${baseHex}, white ${lightness}%)`;
-        
-        const canvas = document.getElementById('brush-preview');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, appState.penSize / 2, 0, Math.PI*2);
-        ctx.fillStyle = appState.penColor;
-        ctx.shadowColor = appState.penColor;
-        ctx.shadowBlur = appState.glow;
-        ctx.fill();
-        ctx.shadowBlur = 0; 
-    }
-
-    function addRecentColor(colorStr) {
-        if (appState.recentColors[0] === colorStr) return;
-        appState.recentColors = appState.recentColors.filter(c => c !== colorStr);
-        appState.recentColors.unshift(colorStr);
-        if(appState.recentColors.length > 10) appState.recentColors.pop();
-        const box = document.getElementById('recent-colors-box');
-        box.innerHTML = '';
-        appState.recentColors.forEach(color => {
-            const div = document.createElement('div');
-            div.className = 'color-swatch'; div.style.background = color;
-            div.onclick = () => { appState.penColor = color; setMode(null); };
-            box.appendChild(div);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: userPrompt }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }] })
         });
-    } // <--- This was the missing bracket!
+        const data = await res.json();
 
-    init(); // <--- Added this so your app actually turns on when loaded!
+        if (data.error) {
+            alert("AI Error: " + data.error.message);
+            if(data.error.code === 400 || data.error.code === 403) localStorage.removeItem('saved_api_key');
+        } else alert("GEMINI:\n\n" + data.candidates[0].content.parts[0].text);
+        
+    } catch (e) { alert("Network Error connecting to AI."); }
+    
+    $('btn-menu').innerText = 'MENU';
+}
+
+init();
 </script>
 </body>
 </html>
