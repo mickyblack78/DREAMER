@@ -315,6 +315,14 @@ async function triggerAI() {
 }
 
 init();
+    // Registers the service worker to make the app work permanently offline
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('DREAMER Local Engine Active:', reg.scope))
+            .catch(err => console.error('Registration Failed:', err));
+    });
+    }
 </script>
 </body>
 </html>
