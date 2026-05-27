@@ -1,10 +1,11 @@
-const CACHE_NAME = 'studio-core-v1';
+const CACHE_NAME = 'DREAMER';
 const ASSETS = [
   './',
-  './index.html', // Ensure this matches your local deployment filename
+  './index.html',
+  './SMARTART.png'
 ];
 
-// Install Event - Caches core assets locally
+// Install Event - Stores the app layout on your phone permanently
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -14,7 +15,7 @@ self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-// Activate Event - Cleans up old cache structures
+// Activate Event - Cleans out old cached layouts if you change things later
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
@@ -30,7 +31,7 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch Event - Strict Offline-First Strategy (Bypasses network entirely if cached)
+// Fetch Event - Intercepts requests and loads the app from storage instantly
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
