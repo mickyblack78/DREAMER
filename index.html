@@ -347,7 +347,6 @@
 
                     tctx.beginPath(); tctx.moveTo(lx, ly); tctx.lineTo(c.x, c.y); tctx.stroke(); lx = c.x; ly = c.y;
                 }
-            }
         }, {passive: false});
 
         window.addEventListener('touchend', e => {
@@ -361,7 +360,7 @@
                         if (app.activeTool === 'CUT') { mctx.clearRect(window.dx, window.dy, w, h); pushUndo('cut'); } 
                         alert("Copied!");
                     }app.activeTool = null;
-                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active-btn'));
+                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active-btn'));}
                 } 
                 }
                 else if (app.activeTool === 'PASTE' && window.clipboard) {
